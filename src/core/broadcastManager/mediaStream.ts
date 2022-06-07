@@ -1,31 +1,15 @@
-interface GetLocalMediaStreamParams {
-  videoDeviceId: string;
-  audioDeviceId: string;
-}
-export const getLocalMediaStream = async ({
-  videoDeviceId,
-  audioDeviceId,
-}: GetLocalMediaStreamParams) => {
-  const constraint = {
-    // audio: {
-    //   deviceId: '', //audioDeviceId ?? null,
-    // },
-    video: {
-      deviceId: undefined, // videoDeviceId ?? null,
-      height: { ideal: 640 },
-      width: { ideal: 1440 },
-    },
-  };
-  navigator.mediaDevices.ondevicechange = (e) => {
-    console.log('device on changed..2');
-    console.log(e);
-  };
-  navigator.mediaDevices.addEventListener('devicechange', (e) => {
-    console.log(e);
-    console.log('sdf?');
-  });
-  const supported = navigator.mediaDevices.getSupportedConstraints();
-  console.log(supported);
+export const getLocalMediaStream = async (constraint: any) => {
+  // const constraint = {
+  //   audio: {
+  //     deviceId: undefined, //'', //audioDeviceId ?? null,
+  //   },
+  //   video: {
+  //     deviceId: undefined, // videoDeviceId ?? null,
+  //     height: { ideal: 640 },
+  //     width: { ideal: 1440 },
+  //   },
+  // };
+
   const stream = await navigator.mediaDevices.getUserMedia(constraint);
   return stream;
 };

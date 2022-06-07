@@ -2,6 +2,7 @@ import { initVideoElement } from './elements';
 import { getMediaDevices, MediaDevices } from './mediaDevice';
 import { getLocalMediaStream } from './mediaStream';
 
+type BroadcastMode = 'AUDIO_ONLY' | 'VIDEO';
 class BroadcastManager {
   static _instance: any;
 
@@ -9,56 +10,134 @@ class BroadcastManager {
 
   _muted: boolean = true;
 
-  _mode: 'video' | 'audio' = 'video';
+  _mode: BroadcastMode = 'VIDEO';
 
-  _localDevices: MediaDevices | null = null;
+  _strict: boolean = false;
+
+  _listener: any[] = [];
 
   constructor() {
     if (BroadcastManager._instance) {
-      console.error("Singleton classes can't be instantiated more than once.");
-    }
-    BroadcastManager._instance = this;
-    navigator.mediaDevices.ondevicechange = async () => {
-      this._localDevices = await getMediaDevices();
-      console.log(this._localDevices);
-    };
-    (async () => {
-      this._localDevices = await getMediaDevices();
-      console.log(this._localDevices);
-    })();
-    // ... your rest of the constructor code goes after this
-  }
-
-  async start(cb?: any) {
-    if (!this._localDevices) {
+      // console.error("Singleton classes can't be instantiated more than once.");
       return;
     }
-    this._mediaStream = await getLocalMediaStream({
-      audioDeviceId: this._localDevices?.audioinput[0].deviceId,
-      videoDeviceId: this._localDevices?.videoinput[0].deviceId,
-    });
-    cb?.(this._mediaStream);
+    BroadcastManager._instance = this;
+  }
+
+  subscribe(cb: any) {
+    this._listener.push(cb);
+    const id = this._listener.length - 1;
+    return id;
+  }
+
+  unsubscribe(id?: number) {
+    if (id === undefined || isNaN(id)) return;
+    this._listener.splice(id, 1);
+  }
+
+  async start(strict: boolean, cb?: any) {
+    try {
+      this._strict = strict;
+      if (this._mediaStream) {
+        this.stop();
+      }
+      let constraint: any = {
+        audio: { deviceId: undefined },
+      };
+      if (this._mode === 'VIDEO') {
+        constraint = {
+          ...constraint,
+          video: {
+            deviceId: undefined, // videoDeviceId ?? null,
+            height: { ideal: 640 },
+            width: { ideal: 1440 },
+          },
+        };
+      }
+      this._mediaStream = await getLocalMediaStream(constraint);
+      const tracks = this._mediaStream.getTracks();
+      tracks.forEach((track) => {
+        if (track.kind === 'audio') {
+          track.enabled = !this._muted;
+        }
+      });
+      this._listener.forEach((cb, i) => {
+        cb?.({
+          mediaStream: this._mediaStream,
+        });
+      });
+    } catch (err: any) {
+      console.log(err);
+      //
+    }
   }
 
   stop() {
-    if (!this._mediaStream) return;
-    const tracks = this._mediaStream.getTracks();
+    try {
+      if (!this._mediaStream) {
+        // throw new Error('No Media Stream...');
+        throw {
+          message: 'There is no Media Stream.',
+          name: 'ResourceError',
+        };
+      }
+      const tracks = this._mediaStream.getTracks();
 
-    tracks.forEach(function (track) {
-      track.stop();
-    });
+      tracks.forEach(function (track) {
+        track.stop();
+      });
+      this._mediaStream = null;
+    } catch (err: any) {
+      console.error(err);
+      console.log(err?.message);
+      console.log(err?.name);
+      //
+    }
   }
 
   get mediaStream() {
     return this._mediaStream;
   }
 
-  get localDevices() {
-    return this._localDevices;
-  }
-
-  set mode(_mode: 'video' | 'audio') {
+  set mode(_mode: 'VIDEO' | 'AUDIO_ONLY') {
+    const prevMode = this._mode;
+    if (prevMode === _mode) return;
     this._mode = _mode;
+    if (!this._mediaStream) return;
+    if (this._strict) {
+      console.log('STRICT!!!');
+      this.stop();
+      this.start(this._strict);
+      return;
+    }
+    const tracks = this._mediaStream.getTracks();
+    tracks.forEach((track) => {
+      if (track.kind === 'video') {
+        // if (this._mode === 'AUDIO_ONLY') {
+        //   track.stop();
+        // }
+        track.enabled = this._mode === 'VIDEO';
+      }
+    });
+  }
+  get mode() {
+    return this._mode;
+  }
+  get muted() {
+    return this._muted;
+  }
+  set muted(_muted: boolean) {
+    this._muted = _muted;
+    if (!this._mediaStream) return;
+    const tracks = this._mediaStream.getTracks();
+    tracks.forEach((track) => {
+      if (track.kind === 'audio') {
+        track.enabled = !this._muted;
+      }
+      if (track.kind === 'video') {
+        track.enabled = this._mode === 'VIDEO';
+      }
+    });
   }
 }
 
