@@ -36,6 +36,29 @@ function App() {
       bm.unsubscribe(bmId.current);
     };
   }, []);
+
+  const handleAudio = () => {
+    // const audioContext = new AudioContext();
+    // const source = audioContext.createMediaStreamSource(
+    //   bm.mediaStream as MediaStream
+    // );
+    // const analyser = audioContext.createAnalyser();
+    // source.connect(analyser);
+
+    // const dataArray = new Uint8Array(32);
+    setInterval(() => {
+      // analyser.getByteFrequencyData(dataArray);
+      const dataArray: Uint16Array = bm.getDataArray();
+      const numArr = Array.from(dataArray);
+      const max = Math.max(...numArr);
+      const sum = numArr.reduce((a, b) => a + b * b, 0);
+      var rms = Math.sqrt(sum / numArr.length);
+      console.log(max, numArr);
+
+      // if (max > 130) {
+      // }
+    }, 200);
+  };
   return (
     <div
       className="App"
@@ -55,9 +78,10 @@ function App() {
           AUDIO_ONLY MODE
         </button>
         <button onClick={() => handleUnsub()}>Unsubscribe</button>
+        <button onClick={handleAudio}>Audio</button>
       </p>
 
-      <video ref={videoRef} autoPlay />
+      <video ref={videoRef} autoPlay muted />
     </div>
   );
 }
