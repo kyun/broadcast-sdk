@@ -16,32 +16,32 @@ class BroadcastManager {
 
   _listener: any[] = [];
 
-  _audioContext: AudioContext = new AudioContext();
-
-  _audioAnalyser: AnalyserNode | null = null;
-
-  _dataArray: any;
-
   constructor() {
     if (BroadcastManager._instance) {
-      // console.error("Singleton classes can't be instantiated more than once.");
-      return;
+      console.error("Singleton classes can't be instantiated more than once.");
+      return BroadcastManager._instance;
     }
     BroadcastManager._instance = this;
   }
 
   subscribe(cb: any) {
+    console.log(this._listener);
     this._listener.push(cb);
+    console.log(this._listener);
     const id = this._listener.length - 1;
+    console.log('subscribed callback', this._listener, id, Date.now());
+
     return id;
   }
 
   unsubscribe(id?: number) {
+    console.log('unsubs');
     if (id === undefined || isNaN(id)) return;
     this._listener.splice(id, 1);
   }
 
   async start(strict: boolean, cb?: any) {
+    console.log(this._listener);
     try {
       this._strict = strict;
       if (this._mediaStream) {
@@ -62,8 +62,6 @@ class BroadcastManager {
       }
       this._mediaStream = await getLocalMediaStream(constraint);
 
-      this.setAudioAnalyser();
-
       const tracks = this._mediaStream.getTracks();
       tracks.forEach((track) => {
         if (track.kind === 'audio') {
@@ -80,50 +78,6 @@ class BroadcastManager {
       //
     }
   }
-
-  setAudioAnalyser() {
-    if (!this._mediaStream) return;
-    const source = this._audioContext.createMediaStreamSource(
-      this._mediaStream
-    );
-    this._audioAnalyser = this._audioContext.createAnalyser();
-    this._audioAnalyser.fftSize = 32;
-    source.connect(this._audioAnalyser);
-    // const bufferLength = this._audioAnalyser.frequencyBinCount;
-    this._dataArray = new Uint8Array(this._audioAnalyser.fftSize);
-    this._audioAnalyser?.getByteFrequencyData(this._dataArray);
-  }
-
-  getDataArray() {
-    // if (!this._audioAnalyser) return;
-    this._audioAnalyser?.getByteFrequencyData(this._dataArray);
-    return this._dataArray;
-    //
-    // this._audioAnalyser.getByteTimeDomainData(this._dataArray);
-    return this._dataArray;
-  }
-
-  // async audio() {
-  //   if (!this._mediaStream) return;
-
-  //   const audioCtx = new AudioContext();
-  //   const source = audioCtx.createMediaStreamSource(this._mediaStream);
-  //   this._audioAnalyseranalyser = audioCtx.createAnalyser();
-  //   analyser.fftSize = 32;
-  //   source.connect(analyser);
-
-  //   const bufferLength = analyser.frequencyBinCount;
-  //   const dataArray = new Uint8Array(bufferLength);
-
-  //   setInterval(() => {
-  //     analyser.getByteTimeDomainData(dataArray);
-  //     const numArr = Array.from(dataArray);
-  //     const max = Math.max(...numArr);
-  //     if (max > 130) {
-  //       console.log(max);
-  //     }
-  //   }, 200);
-  // }
 
   stop() {
     try {
